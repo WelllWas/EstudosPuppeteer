@@ -20,8 +20,7 @@ const instagram = {
     login: async (user, password) => {
         await instagram.page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
-        // await instagram.page.waitFor(2000);
-        // await instagram.page.waitForNavigation({waitUntil: 'networkidle2'});
+        await instagram.page.waitForTimeout(1000);
 
         await instagram.page.type('input[name="username"]', user, { delay: 50 });
         await instagram.page.type('input[name="password"]', password, { delay: 50 });
@@ -46,11 +45,8 @@ const instagram = {
                 let post = posts[i];
 
                 await post.click();
-
                 await instagram.page.waitForTimeout('span[id="react-root"][aria-hidden="true"]');
-
                 await instagram.page.waitForTimeout(1000);
-
                 let isLikable = await instagram.page.$('span > svg[aria-label="Curtir"]');
 
                 if (isLikable) {
@@ -60,32 +56,74 @@ const instagram = {
                 }
 
                 await instagram.page.waitForTimeout(2000);
-
-                //download image
-                const IMAGE_SELECTOR = 'article > div > div > div > div > div >div > img[style="object-fit: cover;"]';
-                let srcUrl = await instagram.page.$eval(IMAGE_SELECTOR, el=> el.srcset);
-                const info = srcUrl.split("1080w");
-                const imgUrl = info[0];
-                console.log(imgUrl);
-                const imgPage = await instagram.browser.newPage();
-                await imgPage.goto(imgUrl);
-                await instagram.page.waitForTimeout(3000);
-                await imgPage.screenshot({path: tag+i+".png"});
-                await instagram.page.waitForTimeout(2000);
-                await imgPage.close();
+                //getImg
+                await getImages(tag, i);
 
                 await instagram.page.waitForTimeout(2000);
-
                 await instagram.page.click('svg[aria-label="Fechar"]');
-                // let closeModalButton = await instagram.page.$x('//svg[contains(text(), "Fechar")]');
-                // await closeModalButton[0].click();
-
                 await instagram.page.waitForTimeout(1000);
 
             }
             await instagram.page.waitForTimeout(30000);
         }
         await browser.close();
+    }
+}
+
+async function download(url, tag, counter){
+        const imgPage = await instagram.browser.newPage();
+        await imgPage.goto(url);
+        await instagram.page.waitForTimeout(3000);
+        await imgPage.screenshot({ path: "Images/"+ tag + counter + ".png" });
+        await instagram.page.waitForTimeout(2000);
+        await imgPage.close();
+}
+
+async function getImages(tag, counter){
+    try{
+        let IMAGE_SELECTOR, srcUrl;
+        IMAGE_SELECTOR = 'article > div > div > div > div > div >div > img[style="object-fit: cover;"]';
+        srcUrl = await instagram.page.$eval(IMAGE_SELECTOR, el => el.srcset);
+        if (srcUrl) {
+            const info = srcUrl.split("1080w");
+            const imgUrl = info[0];
+            await download(imgUrl, tag, counter)
+        } else{
+            srcUrl = await instagram.page.$eval(IMAGE_SELECTOR, el => el.src);
+            if(srcUrl){
+                const info = srcUrl.split("1080w");
+                const imgUrl = info[0];
+                await download(imgUrl, tag, counter);
+            } else {
+                IMAGE_SELECTOR = 'article > div > div > div > div > div > div > div > img[style="object-fit: cover;"]';
+                srcUrl = await instagram.page.$eval(IMAGE_SELECTOR, el => el.srcset);
+                if(srcUrl){
+                    const info = srcUrl.split("1080w");
+                    const imgUrl = info[0];
+                    await download(imgUrl, tag, counter)
+                } else{
+                    srcUrl = await instagram.page.$eval(IMAGE_SELECTOR, el => el.src);
+                    if(srcUrl){
+                        const info = srcUrl.split("1080w");
+                        const imgUrl = info[0];
+                        await download(imgUrl, tag, counter)
+                    } else {
+                        IMAGE_SELECTOR = 'article > div > div > div > div > div > div > div > div > ul > li > div > div > div > div > div > img[style="object-fit: cover;"]';
+                        srcUrl = await instagram.page.$eval(IMAGE_SELECTOR, el => el.srcset);
+                        if(srcUrl){
+                            await download(srcUrl, tag, counter)
+                        } else {
+                            srcUrl = await instagram.page.$eval(IMAGE_SELECTOR, el => el.src);
+                            await download(srcUrl, tag, counter)
+                        }
+                    }
+                    
+                }
+            } 
+            
+        }  
+    } catch(e){
+        console.log(e);
     }
 }
 

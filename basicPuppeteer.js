@@ -42,7 +42,6 @@ async function start( ){
     }
 
     await browser.close();
-    //momento em que parei do vídeo ta no zap!!!
 }
 
 //maneiras de fazer um processo automatizado
